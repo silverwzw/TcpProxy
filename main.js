@@ -16,8 +16,8 @@ var msgIdRegexp = /&lt;msg id&equal;&quot;([^&]*)&quot;/;
 var escaper = str => escapes.reduce((s, e) => s.replace(e.from, e.to), str);
 
 function messageDisplayer(msg) {
-    var str = msg.slice(1).toString();
-    return msg[0] + " " + escaper(str);
+    var str = msg.toString();
+    return escaper(str);
 }
 
 function clientDataReceived(context, data) {
@@ -26,6 +26,10 @@ function clientDataReceived(context, data) {
 
 function remoteDataReceived(context, data) {
     context.sendToClient(data);
+}
+
+function isPing(data) {
+    return data.toString() === '&&lt;msg id&equal;&quot;ping&quot;/&gt;';
 }
 
 console.log("...... Starting Rogue's Tale MITM server on port: " +
@@ -74,32 +78,33 @@ ioreadyP.then(io => {
         client:       io[0],
         remote:       io[1],
         sendToClient: undefined,
-        sendToRemote: undefined
+        sendToRemote: undefined,
     };
 
     context.sendToClient = data => {
-        if (configuration.log.client) {
-            console.log("<<<  : " + messageDisplayer(data));
+        if (configuration.log.client && !isPing(data)) {
+            console.log("<<<   " + messageDisplayer(data));
         }
         context.client.write(data);
     };
 
     context.sendToRemote = data => {
-        if (configuration.log.remote) {
-            console.log("  >>>: " + messageDisplayer(data));
+        if (configuration.log.remote && !isPing(data)) {
+            console.log("  >>> " + messageDisplayer(data));
         }
         context.remote.write(data);
     };
 
     context.client.on("data", data => {
-        if (configuration.log.client) {
-            console.log(">>>  : " + messageDisplayer(data));
+        if (configuration.log.client && !isPing(data)) {
+            console.log(">>>   " + messageDisplayer(data));
         }
         clientDataReceived(context, data);
     });
+
     context.remote.on("data", data => {
-        if (configuration.log.remote) {
-            console.log(">>>  : " + messageDisplayer(data));
+        if (configuration.log.remote && !isPing(data)) {
+            console.log(">>>   " + messageDisplayer(data));
         }
         remoteDataReceived(context, data);
     });
